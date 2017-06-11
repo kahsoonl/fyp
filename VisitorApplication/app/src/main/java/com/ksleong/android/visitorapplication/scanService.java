@@ -1,10 +1,14 @@
 package com.ksleong.android.visitorapplication;
 
 import android.app.Application;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.app.NotificationCompat;
@@ -41,13 +45,14 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
     private RegionBootstrap regionBootstrap;
     private BackgroundPowerSaver backgroundPowerSaver;
     private HomeActivity rangingActivity = null;
-    private DatabaseReference btBeaconReference;
     private List<btBeacon> beaconList = new ArrayList<>();
     BeaconManager beaconManager;
 
+    private DatabaseReference btBeaconReference;
 
     public void onCreate() {
         super.onCreate();
+
 
         //bluetooth beacon scan
         beaconManager = BeaconManager.getInstanceForApplication(this);
@@ -79,7 +84,6 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
                 }
 
             }
-
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.d("FIREBASE",databaseError.getMessage());
@@ -114,6 +118,7 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
 
     private void sendNotification(btBeacon btb) {
 
+        Uri notiSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         Bundle btInformation = new Bundle();
         btInformation.putString("LocationName",btb.getLocationName());
         btInformation.putString("Description",btb.getDescription());
@@ -122,7 +127,11 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
                 new NotificationCompat.Builder(this)
                         .setContentTitle("btBeacon Reference Application")
                         .setContentText("A point of interest is nearby!")
+                        .setSound(notiSound)
+                        .setPriority(Notification.PRIORITY_HIGH)
                         .setSmallIcon(R.mipmap.ic_launcher_round);
+
+        if (Build.VERSION.SDK_INT >= 21) builder.setVibrate(new long[0]);
 
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
         stackBuilder.addNextIntent(new Intent(this, InfoActivity.class).putExtra("btInfoBundle",btInformation));
