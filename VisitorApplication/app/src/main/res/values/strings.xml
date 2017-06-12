@@ -1,6 +1,10 @@
 <resources>
     <string name="app_name">VisitorApp</string>
+    <string name="scan_status">Beacon scanning is currently</string>
+    <string name="start_scan">Start Scan</string>
+    <string name="stop_scan">Stop Scan</string>
     <string name="home_welcome">Welcome to Sunway University</string>
+    <string name="home_image_desc">Sunway University Logo</string>
     <string name="menu_setting">Settings</string>
     <string name="information_image">Image of Location</string>
     <string name="debug">Debug</string>

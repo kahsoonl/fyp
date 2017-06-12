@@ -17,9 +17,9 @@ import java.util.ArrayList;
 public class SlidePagerAdapter extends PagerAdapter {
 
     private ArrayList<Integer> images;
-    private int[] images2 = {R.drawable.sunu_home,
-            R.drawable.common_google_signin_btn_icon_dark_focused,
-            R.drawable.common_google_signin_btn_icon_dark_normal_background};
+    private int[] images2 = {R.drawable.sunu_new_morning,
+            R.drawable.sunu_night,
+            R.drawable.sunu_home};
     private Context context;
     private LayoutInflater inflater;
 

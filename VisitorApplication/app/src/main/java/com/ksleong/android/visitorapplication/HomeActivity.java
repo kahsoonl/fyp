@@ -1,6 +1,5 @@
 package com.ksleong.android.visitorapplication;
 
-import android.Manifest;
 import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
@@ -12,14 +11,15 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -30,82 +30,38 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import org.altbeacon.beacon.BeaconManager;
+
 public class HomeActivity extends AppCompatActivity {
 
-    private ViewPager mPager;
-    private PagerAdapter mPagerAdapter;
+    //TODO 2: Add a FAQ button for user to know what this apps is for
+    //TODO 3: Add a list of all location for users to access them at any given time
 
     private BluetoothAdapter mBluetoothAdapter;
+    private BeaconManager beaconManager;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static final int REQUEST_ENABLE_BT = 1;
 
     private DatabaseReference btReference;
     private FirebaseAuth mAuth;
+    private TextView homeText;
+    private Button scanButton;
+    private scanService service = new scanService();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        beaconManager = BeaconManager.getInstanceForApplication(this);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mAuth = FirebaseAuth.getInstance();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-            if (this.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("This app needs location access");
-                builder.setMessage("Please grant location so that this application is able to scan and detect bluetooth beacons.");
-                builder.setPositiveButton(android.R.string.ok, null);
-                builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-
-                    @TargetApi(23)
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
-                        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                                PERMISSION_REQUEST_COARSE_LOCATION);
-                    }
-                });
-                builder.show();
-            }
-        }
-
-        if(!mBluetoothAdapter.isEnabled()){
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Require Bluetooth");
-            builder.setMessage("Please enable Bluetooth for this app to scan and detect bluetooth beacons");
-            builder.setPositiveButton(android.R.string.ok, null);
-            builder.setOnDismissListener(new DialogInterface.OnDismissListener(){
-
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-                }
-            });
-            builder.show();
-        }
-
-        if(!isLocationServiceEnabled()){
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Require Location");
-            builder.setMessage("Please enable Location for this app to scan and detect bluetooth beacons");
-            builder.setPositiveButton(android.R.string.ok, null);
-            builder.setOnDismissListener(new DialogInterface.OnDismissListener(){
-
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    Intent myIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                    startActivity(myIntent);
-                }
-            });
-            builder.show();
-        }
-
 
         setContentView(R.layout.activity_home);
         setTitle("Welcome to Sunway University");
 
-        mPager = (ViewPager) findViewById(R.id.slide_pager);
-        mPagerAdapter = new SlidePagerAdapter(this, "home");
-        mPager.setAdapter(mPagerAdapter);
+        homeText = (TextView) findViewById(R.id.home_text);
+        scanButton = (Button) findViewById(R.id.scan_button);
+        scanStatus();
+        //requestForAccess();
     }
 
     @Override
@@ -202,5 +158,74 @@ public class HomeActivity extends AppCompatActivity {
                         }
                     }
                 });
+    }
+
+    public void requestForAccess(View view) {
+
+        //TODO 1: Properly configure the Start and Stop Button
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (this.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("This app needs location access");
+                builder.setMessage("Please grant location so that this application is able to scan and detect bluetooth beacons.");
+                builder.setPositiveButton(android.R.string.ok, null);
+                builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+                    @TargetApi(23)
+                    @Override
+                    public void onDismiss(DialogInterface dialog) {
+                        requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},
+                                PERMISSION_REQUEST_COARSE_LOCATION);
+                    }
+                });
+                builder.show();
+            }
+        }
+
+        if (!mBluetoothAdapter.isEnabled()) {
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Require Bluetooth");
+            builder.setMessage("Please enable Bluetooth for this app to scan and detect bluetooth beacons");
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                }
+            });
+            builder.show();
+        }
+
+        if (!isLocationServiceEnabled()) {
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Require Location");
+            builder.setMessage("Please enable Location for this app to scan and detect bluetooth beacons");
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    Intent myIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    startActivity(myIntent);
+                }
+            });
+            builder.show();
+        }
+    }
+
+    public void scanStatus() {
+
+        String defaultStatusText = getResources().getString(R.string.scan_status);
+
+        if (!beaconManager.isAnyConsumerBound()) {
+            scanButton.setText(R.string.start_scan);
+            homeText.setText(defaultStatusText + " inactive");
+        } else {
+            scanButton.setText(R.string.stop_scan);
+            homeText.setText(defaultStatusText + " active");
+        }
     }
 }

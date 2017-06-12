@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -52,8 +53,6 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
 
     public void onCreate() {
         super.onCreate();
-
-
         //bluetooth beacon scan
         beaconManager = BeaconManager.getInstanceForApplication(this);
         beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"));
@@ -65,7 +64,7 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
 
         beaconManager.setBackgroundBetweenScanPeriod(10000);
         beaconManager.setForegroundBetweenScanPeriod(10000);
-        beaconManager.bind(this);
+        //beaconManager.bind(this);
 
         //firebase
         btBeaconReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
@@ -82,13 +81,27 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
                     btBeacon beacon = btSnapshot.getValue(btBeacon.class);
                     beaconList.add(beacon);
                 }
-
             }
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.d("FIREBASE",databaseError.getMessage());
             }
         });
+    }
+
+    @Override
+    public Context getApplicationContext() {
+        return super.getApplicationContext();
+    }
+
+    @Override
+    public void unbindService(ServiceConnection conn) {
+        super.unbindService(conn);
+    }
+
+    @Override
+    public boolean bindService(Intent service, ServiceConnection conn, int flags) {
+        return super.bindService(service, conn, flags);
     }
 
     @Override
@@ -116,40 +129,9 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
         Log.d(TAG,"I have just switched from seeing/not seeing beacons: " + state);
     }
 
-    private void sendNotification(btBeacon btb) {
-
-        Uri notiSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        Bundle btInformation = new Bundle();
-        btInformation.putString("LocationName",btb.getLocationName());
-        btInformation.putString("Description",btb.getDescription());
-
-        NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(this)
-                        .setContentTitle("btBeacon Reference Application")
-                        .setContentText("A point of interest is nearby!")
-                        .setSound(notiSound)
-                        .setPriority(Notification.PRIORITY_HIGH)
-                        .setSmallIcon(R.mipmap.ic_launcher_round);
-
-        if (Build.VERSION.SDK_INT >= 21) builder.setVibrate(new long[0]);
-
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-        stackBuilder.addNextIntent(new Intent(this, InfoActivity.class).putExtra("btInfoBundle",btInformation));
-        PendingIntent resultPendingIntent =
-                stackBuilder.getPendingIntent(
-                        0,
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                );
-        builder.setContentIntent(resultPendingIntent);
-        NotificationManager notificationManager =
-                (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(1, builder.build());
-    }
-
     @Override
     public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
         if (beacons.size() > 0) {
-            //System.out.println(beaconList.size());
             for (Beacon b : beacons) {
                 for(btBeacon btb : beaconList) {
 
@@ -182,5 +164,39 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
     @Override
     public void onBeaconServiceConnect() {
         beaconManager.setRangeNotifier(this);
+    }
+
+    private void sendNotification(btBeacon btb) {
+
+        Uri notiSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Bundle btInformation = new Bundle();
+        btInformation.putString("LocationName", btb.getLocationName());
+        btInformation.putString("Description", btb.getDescription());
+
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this)
+                        .setContentTitle("btBeacon Reference Application")
+                        .setContentText("A point of interest is nearby!")
+                        .setSound(notiSound)
+                        .setPriority(Notification.PRIORITY_HIGH)
+                        .setSmallIcon(R.mipmap.main_icon);
+
+        if (Build.VERSION.SDK_INT >= 21) builder.setVibrate(new long[0]);
+
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+
+        stackBuilder.addNextIntent(new Intent(this, InfoActivity.class).putExtra("btInfoBundle", btInformation));
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(
+                        0,
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                );
+
+        builder.setContentIntent(resultPendingIntent);
+
+        NotificationManager notificationManager =
+                (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        notificationManager.notify(1, builder.build());
     }
 }
