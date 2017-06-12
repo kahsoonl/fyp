@@ -12,13 +12,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -31,7 +32,8 @@ import com.google.firebase.database.FirebaseDatabase;
 
 public class HomeActivity extends AppCompatActivity {
 
-    private ImageView mHomeImage;
+    private ViewPager mPager;
+    private PagerAdapter mPagerAdapter;
 
     private BluetoothAdapter mBluetoothAdapter;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
@@ -45,7 +47,6 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mAuth = FirebaseAuth.getInstance();
-
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
             if (this.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -102,8 +103,9 @@ public class HomeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_home);
         setTitle("Welcome to Sunway University");
 
-        mHomeImage = (ImageView)findViewById(R.id.home_image);
-        mHomeImage.setImageResource(R.drawable.sunu_home);
+        mPager = (ViewPager) findViewById(R.id.slide_pager);
+        mPagerAdapter = new SlidePagerAdapter(this, "home");
+        mPager.setAdapter(mPagerAdapter);
     }
 
     @Override

@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">VisitorApp</string>
-    <string name="home_image">Image of Sunway University</string>
     <string name="home_welcome">Welcome to Sunway University</string>
     <string name="menu_setting">Settings</string>
     <string name="information_image">Image of Location</string>
@@ -11,6 +10,7 @@
     <string name="scan_button">Scan</string>
     <string name="menu_scan">Scan Test</string>
     <string name="title_activity_info">InfoActivity</string>
+    <string name="slide_image">Slideshow Image</string>
     <string name="large_text">
         "Material is the metaphor.\n\n"
 

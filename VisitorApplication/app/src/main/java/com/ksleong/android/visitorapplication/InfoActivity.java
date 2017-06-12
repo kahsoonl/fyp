@@ -2,18 +2,17 @@ package com.ksleong.android.visitorapplication;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 public class InfoActivity extends AppCompatActivity {
 
-    private ImageView infoImage;
     private TextView infoText;
+    private ViewPager mPager;
+    private PagerAdapter mPagerAdapter;
 
 
     @Override
@@ -23,8 +22,9 @@ public class InfoActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        infoImage = (ImageView)findViewById(R.id.info_image);
-        infoImage.setImageResource(R.drawable.sunu_home);
+        mPager = (ViewPager) findViewById(R.id.info_pager);
+        mPagerAdapter = new SlidePagerAdapter(this, "info");
+        mPager.setAdapter(mPagerAdapter);
         infoText = (TextView)findViewById(R.id.info_text);
 
         Intent fromIntent = getIntent();
