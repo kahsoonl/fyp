@@ -1,16 +1,24 @@
 package com.ksleong.android.visitorapplication;
 
 import android.annotation.TargetApi;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -27,40 +35,77 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
+import org.altbeacon.beacon.Beacon;
+import org.altbeacon.beacon.BeaconConsumer;
 import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.RangeNotifier;
+import org.altbeacon.beacon.Region;
+import org.altbeacon.beacon.powersave.BackgroundPowerSaver;
+import org.altbeacon.beacon.startup.BootstrapNotifier;
+import org.altbeacon.beacon.startup.RegionBootstrap;
 
-public class HomeActivity extends AppCompatActivity {
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+public class HomeActivity extends AppCompatActivity implements BootstrapNotifier, BeaconConsumer {
 
     //TODO 2: Add a FAQ button for user to know what this apps is for
     //TODO 3: Add a list of all location for users to access them at any given time
 
     private BluetoothAdapter mBluetoothAdapter;
-    private BeaconManager beaconManager;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static final int REQUEST_ENABLE_BT = 1;
+    private static final String TAG = "BeaconReferenceApp";
+    private RegionBootstrap regionBootstrap;
+    private Region region;
+    private BackgroundPowerSaver backgroundPowerSaver;
+    private List<btBeacon> beaconList = new ArrayList<>();
+    private BeaconManager beaconManager;
 
-    private DatabaseReference btReference;
+    private DatabaseReference btBeaconReference;
+
     private FirebaseAuth mAuth;
     private TextView homeText;
-    private Button scanButton;
-    private scanService service = new scanService();
+    private Button startScanButton;
+    private Button stopScanButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        beaconManager = BeaconManager.getInstanceForApplication(this);
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        mAuth = FirebaseAuth.getInstance();
-
         setContentView(R.layout.activity_home);
         setTitle("Welcome to Sunway University");
 
         homeText = (TextView) findViewById(R.id.home_text);
-        scanButton = (Button) findViewById(R.id.scan_button);
+        startScanButton = (Button) findViewById(R.id.start_scan_button);
+        stopScanButton = (Button) findViewById(R.id.stop_scan_button);
+
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        mAuth = FirebaseAuth.getInstance();
+
+        //altbeacon initialization
+        beaconManager = BeaconManager.getInstanceForApplication(this);
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"));
+
+        region = new Region("backgroundRegion", /*Identifier.parse("e2c56db5-dffb-48d2-b060-d0f5a71096e0")*/null, null, null);
+
+        backgroundPowerSaver = new BackgroundPowerSaver(this);
+
+
+        beaconManager.setBackgroundBetweenScanPeriod(5000);
+        beaconManager.setForegroundBetweenScanPeriod(1000);
+
         scanStatus();
+
+        //firebase
+        btBeaconReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
         //requestForAccess();
     }
 
@@ -72,8 +117,15 @@ public class HomeActivity extends AppCompatActivity {
 
         if (currentUser == null) {
             signIn();
+        } else {
+            getBeaconList();
         }
+    }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        beaconManager.unbind(this);
     }
 
     @Override
@@ -100,7 +152,7 @@ public class HomeActivity extends AppCompatActivity {
         }
 
         if(itemID == R.id.menu_database){
-            btReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
+            btBeaconReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
             btBeacon btBeacon = new btBeacon("e2c56db5-dffb-48d2-b060-d0f5a71096e0", "0","35471","Library","In 2016, the Sunway Campus Library continued to improve\n" +
                     "infrastructure and environment in the new Library in response\n" +
                     "to library user needs.\n" +
@@ -113,7 +165,7 @@ public class HomeActivity extends AppCompatActivity {
                     "Library saw increases in usage, with total entries accounting\n" +
                     "for 1,730,000 (20% increase over 2015) and 107,770 loans (3%\n" +
                     "increase over 2015).");
-            btReference.child(btBeacon.getUID()).setValue(btBeacon);
+            btBeaconReference.child(btBeacon.getUID()).setValue(btBeacon);
         }
 
         if(itemID == R.id.menu_scan){
@@ -125,11 +177,9 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     public boolean isLocationServiceEnabled(){
-        LocationManager locationManager = null;
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         boolean gps_enabled= false,network_enabled = false;
 
-        if(locationManager == null)
-            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         try{
             gps_enabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
         }catch(Exception ex){
@@ -151,6 +201,7 @@ public class HomeActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             Log.d("FirebaseUser", "signInAnonymously:success");
+                            getBeaconList();
                         } else {
                             Log.w("FirebaseUser", "signInAnonymously:failure", task.getException());
                             Toast.makeText(HomeActivity.this, "Authentication failed. Please check your internet connection.",
@@ -162,13 +213,12 @@ public class HomeActivity extends AppCompatActivity {
 
     public void requestForAccess(View view) {
 
-        //TODO 1: Properly configure the Start and Stop Button
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (this.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("This app needs location access");
-                builder.setMessage("Please grant location so that this application is able to scan and detect bluetooth beacons.");
+                builder.setMessage("Please grant location permission so that this application is able to scan and detect bluetooth beacons.");
                 builder.setPositiveButton(android.R.string.ok, null);
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
 
@@ -202,7 +252,7 @@ public class HomeActivity extends AppCompatActivity {
         if (!isLocationServiceEnabled()) {
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Require Location");
-            builder.setMessage("Please enable Location for this app to scan and detect bluetooth beacons");
+            builder.setMessage("Please enable Location service for this app to scan and detect bluetooth beacons");
             builder.setPositiveButton(android.R.string.ok, null);
             builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
 
@@ -214,18 +264,163 @@ public class HomeActivity extends AppCompatActivity {
             });
             builder.show();
         }
+
+        switch (view.getId()) {
+            case R.id.start_scan_button:
+                beaconManager.bind(this);
+                startScanButton.setVisibility(View.GONE);
+                stopScanButton.setVisibility(View.VISIBLE);
+                stopScanButton.setEnabled(false);
+                stopScanButton.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        stopScanButton.setEnabled(true);
+                        scanStatus();
+                    }
+                }, 3000);
+                break;
+            case R.id.stop_scan_button:
+                beaconManager.unbind(this);
+                stopScanButton.setVisibility(View.GONE);
+                startScanButton.setVisibility(View.VISIBLE);
+                startScanButton.setEnabled(false);
+                startScanButton.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        startScanButton.setEnabled(true);
+                        scanStatus();
+                    }
+                }, 3000);
+                break;
+        }
     }
 
     public void scanStatus() {
 
-        String defaultStatusText = getResources().getString(R.string.scan_status);
-
         if (!beaconManager.isAnyConsumerBound()) {
-            scanButton.setText(R.string.start_scan);
-            homeText.setText(defaultStatusText + " inactive");
+            homeText.setText(R.string.scan_status_inactive);
         } else {
-            scanButton.setText(R.string.stop_scan);
-            homeText.setText(defaultStatusText + " active");
+            homeText.setText(R.string.scan_status_active);
         }
+    }
+
+    public void getBeaconList() {
+
+        btBeaconReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+
+                for (DataSnapshot btSnapshot : dataSnapshot.getChildren()) {
+                    btBeacon beacon = btSnapshot.getValue(btBeacon.class);
+                    beaconList.add(beacon);
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.d("FIREBASE", databaseError.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public void didEnterRegion(Region region) {
+        Log.d(TAG, "did enter region.");
+        try {
+            beaconManager.startRangingBeaconsInRegion(region);
+        } catch (RemoteException e) {
+            if (BuildConfig.DEBUG) Log.d(TAG, "Can't start ranging");
+        }
+    }
+
+    @Override
+    public void didExitRegion(Region region) {
+        try {
+            beaconManager.stopRangingBeaconsInRegion(region);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void didDetermineStateForRegion(int state, Region region) {
+        Log.d(TAG, "I have just switched from seeing/not seeing beacons: " + state);
+    }
+
+    @Override
+    public void onBeaconServiceConnect() {
+        beaconManager.addRangeNotifier(new RangeNotifier() {
+            @Override
+            public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
+                if (beacons.size() > 0) {
+                    for (Beacon b : beacons) {
+                        for (btBeacon btb : beaconList) {
+
+                            /*
+                            System.out.println(btb.getUID());
+                            System.out.println(b.getId1());
+                            System.out.println(btb.getMajor());
+                            System.out.println(b.getId2());
+                            System.out.println(btb.getMinor());
+                            System.out.println(b.getId3());
+                            System.out.println(btb.getLocationName());
+                            System.out.println(b.getId1().toString().equals(btb.getUID()));
+                            System.out.println(b.getId2().toString().equals(btb.getMajor()));
+                            System.out.println(b.getId3().toString().equals(btb.getMajor()));
+                            System.out.println(b.getDistance() < 2);
+                            */
+
+                            if (b.getId1().toString().equals(btb.getUID())
+                                    && b.getId2().toString().equals(btb.getMajor())
+                                    && b.getId3().toString().equals(btb.getMinor())
+                                    && b.getDistance() < 5) {
+                                Log.e(TAG, "btBeacon with my Instance ID found!");
+                                sendNotification(btb);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        try {
+            beaconManager.startRangingBeaconsInRegion(region);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendNotification(btBeacon btb) {
+
+        Uri notiSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Bundle btInformation = new Bundle();
+        btInformation.putString("LocationName", btb.getLocationName());
+        btInformation.putString("Description", btb.getDescription());
+
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this)
+                        .setContentTitle("Beacon detected")
+                        .setContentText("A point of interest is nearby!")
+                        .setSound(notiSound)
+                        .setPriority(Notification.PRIORITY_HIGH)
+                        .setSmallIcon(R.mipmap.main_icon);
+
+        if (Build.VERSION.SDK_INT >= 21) builder.setVibrate(new long[0]);
+
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+
+        stackBuilder.addNextIntent(new Intent(this, InfoActivity.class).putExtra("btInfoBundle", btInformation));
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(
+                        0,
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                );
+
+        builder.setContentIntent(resultPendingIntent);
+
+        NotificationManager notificationManager =
+                (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        notificationManager.notify(1, builder.build());
     }
 }

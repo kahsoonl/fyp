@@ -109,6 +109,9 @@ public class scanService extends Application implements BootstrapNotifier,Beacon
         Log.d(TAG, "did enter region.");
         try {
             beaconManager.startRangingBeaconsInRegion(region);
+            Intent intent = new Intent(this, HomeActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            this.startActivity(intent);
         }
         catch (RemoteException e) {
             if (BuildConfig.DEBUG) Log.d(TAG, "Can't start ranging");
