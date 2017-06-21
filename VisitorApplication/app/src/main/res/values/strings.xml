@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">VisitorApp</string>
-    <string name="scan_status_active">Beacon scanning is currently active</string>
-    <string name="scan_status_inactive">Beacon scanning is currently inactive</string>
-    <string name="start_scan">Start Scan</string>
-    <string name="stop_scan">Stop Scan</string>
-    <string name="home_welcome">Welcome to Sunway University</string>
+    <string name="app_name">iDiscover</string>
+    <string name="scan_status_active">Discovering nearby places of interest</string>
+    <string name="scan_status_inactive">Press button to start</string>
+    <string name="start_scan">Start Discovering</string>
+    <string name="stop_scan">Stop Discovering</string>
+    <string name="home_welcome">iGuide</string>
     <string name="home_image_desc">Sunway University Logo</string>
     <string name="menu_setting">Settings</string>
     <string name="information_image">Image of Location</string>
@@ -12,10 +12,16 @@
     <string name="tog_text_bt">Toggle Bluetooth Scanning</string>
     <string name="tog_text_wifi">Toggle Access Point Scanning</string>
     <string name="database">Database</string>
-    <string name="scan_button">Scan</string>
+    <string name="menu_list">List of Places</string>
     <string name="menu_scan">Scan Test</string>
     <string name="title_activity_info">InfoActivity</string>
+    <string name="retry">Retry</string>
+    <string name="failed_init">Initialization failed. Please check your internet connection and try again</string>
+    <string name="app_info">App Info</string>
     <string name="slide_image">Slideshow Image</string>
+    <string name="app_info_description">iDiscover is an app that allow users to discover and learn about nearby places of interest.
+        The app requires internet connection to retrieve the latest information. Bluetooth and Location services
+        must be enabled to function properly.</string>
     <string name="large_text">
         "Material is the metaphor.\n\n"
 

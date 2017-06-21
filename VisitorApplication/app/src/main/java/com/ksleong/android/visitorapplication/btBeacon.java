@@ -40,4 +40,5 @@ public class btBeacon {
     public String getDescription(){
         return description;
     }
+
 }

@@ -55,10 +55,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class HomeActivity extends AppCompatActivity implements BootstrapNotifier, BeaconConsumer {
 
-    //TODO 2: Add a FAQ button for user to know what this apps is for
-    //TODO 3: Add a list of all location for users to access them at any given time
+public class HomeActivity extends AppCompatActivity implements BootstrapNotifier, BeaconConsumer {
 
     private BluetoothAdapter mBluetoothAdapter;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
@@ -73,6 +71,7 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
     private DatabaseReference btBeaconReference;
 
     private FirebaseAuth mAuth;
+
     private TextView homeText;
     private Button startScanButton;
     private Button stopScanButton;
@@ -81,7 +80,6 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
-        setTitle("Welcome to Sunway University");
 
         homeText = (TextView) findViewById(R.id.home_text);
         startScanButton = (Button) findViewById(R.id.start_scan_button);
@@ -98,15 +96,14 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
 
         backgroundPowerSaver = new BackgroundPowerSaver(this);
 
-
-        beaconManager.setBackgroundBetweenScanPeriod(5000);
-        beaconManager.setForegroundBetweenScanPeriod(1000);
+        beaconManager.setBackgroundBetweenScanPeriod(100000);
+        beaconManager.setForegroundBetweenScanPeriod(50000);
 
         scanStatus();
 
         //firebase
         btBeaconReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
-        //requestForAccess();
+        getBeaconList();
     }
 
     @Override
@@ -117,8 +114,6 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
 
         if (currentUser == null) {
             signIn();
-        } else {
-            getBeaconList();
         }
     }
 
@@ -141,16 +136,34 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
 
         int itemID = item.getItemId();
 
-        if(itemID == R.id.menu_setting){
-            Intent settingIntent = new Intent(this, SettingActivity.class);
-            startActivity(settingIntent);
+        if (itemID == R.id.app_info) {
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle(R.string.app_name);
+            builder.setMessage(R.string.app_info_description);
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.show();
         }
 
-        if(itemID == R.id.menu_debug){
-            Intent debugIntent = new Intent(this, InfoActivity.class);
-            startActivity(debugIntent);
+        if (itemID == R.id.menu_list) {
+            Intent listIntent = new Intent(this, ListActivity.class);
+            String[] placeName = new String[beaconList.size()];
+            String[] descData = new String[beaconList.size()];
+            int i = 0;
+
+            for (btBeacon b : beaconList) {
+                placeName[i] = b.getLocationName();
+                descData[i] = b.getDescription();
+                i++;
+            }
+
+            Bundle infoBundle = new Bundle();
+            infoBundle.putStringArray("placeName", placeName);
+            infoBundle.putStringArray("desc", descData);
+            listIntent.putExtra("info", infoBundle);
+            startActivity(listIntent);
         }
 
+        /*
         if(itemID == R.id.menu_database){
             btBeaconReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
             btBeacon btBeacon = new btBeacon("e2c56db5-dffb-48d2-b060-d0f5a71096e0", "0","35471","Library","In 2016, the Sunway Campus Library continued to improve\n" +
@@ -166,13 +179,7 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
                     "for 1,730,000 (20% increase over 2015) and 107,770 loans (3%\n" +
                     "increase over 2015).");
             btBeaconReference.child(btBeacon.getUID()).setValue(btBeacon);
-        }
-
-        if(itemID == R.id.menu_scan){
-            Intent scanIntent = new Intent(this, ScanActivity.class);
-            startActivity(scanIntent);
-        }
-
+        } */
         return super.onOptionsItemSelected(item);
     }
 
@@ -201,7 +208,7 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             Log.d("FirebaseUser", "signInAnonymously:success");
-                            getBeaconList();
+                            scanStatus();
                         } else {
                             Log.w("FirebaseUser", "signInAnonymously:failure", task.getException());
                             Toast.makeText(HomeActivity.this, "Authentication failed. Please check your internet connection.",
@@ -212,7 +219,6 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
     }
 
     public void requestForAccess(View view) {
-
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (this.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -356,24 +362,11 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
                     for (Beacon b : beacons) {
                         for (btBeacon btb : beaconList) {
 
-                            /*
-                            System.out.println(btb.getUID());
-                            System.out.println(b.getId1());
-                            System.out.println(btb.getMajor());
-                            System.out.println(b.getId2());
-                            System.out.println(btb.getMinor());
-                            System.out.println(b.getId3());
-                            System.out.println(btb.getLocationName());
-                            System.out.println(b.getId1().toString().equals(btb.getUID()));
-                            System.out.println(b.getId2().toString().equals(btb.getMajor()));
-                            System.out.println(b.getId3().toString().equals(btb.getMajor()));
-                            System.out.println(b.getDistance() < 2);
-                            */
-
                             if (b.getId1().toString().equals(btb.getUID())
                                     && b.getId2().toString().equals(btb.getMajor())
                                     && b.getId3().toString().equals(btb.getMinor())
                                     && b.getDistance() < 5) {
+                                System.out.println(b.getDistance());
                                 Log.e(TAG, "btBeacon with my Instance ID found!");
                                 sendNotification(btb);
                             }
@@ -403,7 +396,7 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
                         .setContentText("A point of interest is nearby!")
                         .setSound(notiSound)
                         .setPriority(Notification.PRIORITY_HIGH)
-                        .setSmallIcon(R.mipmap.main_icon);
+                        .setSmallIcon(R.drawable.beacon_found);
 
         if (Build.VERSION.SDK_INT >= 21) builder.setVibrate(new long[0]);
 
@@ -423,4 +416,5 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
 
         notificationManager.notify(1, builder.build());
     }
+
 }
