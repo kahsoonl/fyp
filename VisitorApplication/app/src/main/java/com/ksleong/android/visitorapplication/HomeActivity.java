@@ -179,7 +179,14 @@ public class HomeActivity extends AppCompatActivity implements BootstrapNotifier
                     "for 1,730,000 (20% increase over 2015) and 107,770 loans (3%\n" +
                     "increase over 2015).");
             btBeaconReference.child(btBeacon.getUID()).setValue(btBeacon);
-        } */
+        }
+
+        if(itemID == R.id.menu_list){
+            btBeaconReference = FirebaseDatabase.getInstance().getReference().child("bluetooth");
+            btBeacon btBeacon = new btBeacon("e3c83db2-dffb-69d2-b060-d0f5a71096e1","1","34321","Cafeteria","The cafeteria has been");
+            btBeaconReference.child(btBeacon.getUID()).setValue(btBeacon);
+        }*/
+
         return super.onOptionsItemSelected(item);
     }
 

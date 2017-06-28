@@ -16,10 +16,8 @@ import java.util.ArrayList;
 
 public class SlidePagerAdapter extends PagerAdapter {
 
-    private ArrayList<Integer> images;
-    private int[] images2 = {R.drawable.sunu_new_morning,
-            R.drawable.sunu_night,
-            R.drawable.sunu_home};
+    private ArrayList<Integer> images = new ArrayList<Integer>();
+    private int[] images2;
     private Context context;
     private LayoutInflater inflater;
 
@@ -55,17 +53,27 @@ public class SlidePagerAdapter extends PagerAdapter {
 
     public void retrieveResource(String activityName) {
         switch (activityName) {
-            case "home":
-                //images.add(R.drawable.sunu_home);
-                //images.add(R.drawable.common_google_signin_btn_icon_dark_focused);
-                //images.add(R.drawable.common_google_signin_btn_icon_dark_normal_background);
+            case "Library":
+                images.add(R.drawable.library_1);
+                images.add(R.drawable.library_2);
+                images.add(R.drawable.library_3);
+                images.add(R.drawable.library_4);
+                images.add(R.drawable.library_5);
+                images2 = convertIntegers(images);
                 break;
-            case "info":
-                //images.add(R.drawable.sunu_home);
-                //images.add(R.drawable.common_google_signin_btn_icon_dark_focused);
-                //images.add(R.drawable.common_google_signin_btn_icon_dark_normal_background);
+            case "Cafeteria":
+                images.add(R.drawable.cafeteria_1);
+                images.add(R.drawable.cafeteria_2);
+                images2 = convertIntegers(images);
                 break;
         }
+    }
 
+    public static int[] convertIntegers(ArrayList<Integer> integers) {
+        int[] ret = new int[integers.size()];
+        for (int i = 0; i < ret.length; i++) {
+            ret[i] = integers.get(i).intValue();
+        }
+        return ret;
     }
 }

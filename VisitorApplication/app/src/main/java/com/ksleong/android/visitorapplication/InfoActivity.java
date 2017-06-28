@@ -13,6 +13,7 @@ public class InfoActivity extends AppCompatActivity {
     private TextView infoText;
     private ViewPager mPager;
     private PagerAdapter mPagerAdapter;
+    private String locationName;
 
 
     @Override
@@ -21,18 +22,21 @@ public class InfoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_info);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
+        infoText = (TextView) findViewById(R.id.info_text);
         mPager = (ViewPager) findViewById(R.id.info_pager);
-        mPagerAdapter = new SlidePagerAdapter(this, "info");
-        mPager.setAdapter(mPagerAdapter);
-        infoText = (TextView)findViewById(R.id.info_text);
 
         Intent fromIntent = getIntent();
 
-        if(fromIntent.hasExtra("btInfoBundle")){
+        if (fromIntent.hasExtra("btInfoBundle")) {
             Bundle btInfoBundle = fromIntent.getBundleExtra("btInfoBundle");
+            locationName = btInfoBundle.getString("LocationName");
             infoText.setText(btInfoBundle.getString("Description"));
             setTitle(btInfoBundle.getString("LocationName"));
         }
+
+        mPagerAdapter = new SlidePagerAdapter(this, locationName);
+        mPager.setAdapter(mPagerAdapter);
+
+
     }
 }
